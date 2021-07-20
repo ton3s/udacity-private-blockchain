@@ -73,6 +73,7 @@ class Blockchain {
 
 			if (await block.validate()) {
 				self.chain.push(block)
+				await this.validateChain()
 				return resolve(block)
 			} else {
 				return reject('Error: could not add block to chain')
@@ -122,11 +123,14 @@ class Blockchain {
 			const currentTime = parseInt(new Date().getTime().toString().slice(0, -3))
 			if (currentTime - time < 5 * 60) {
 				if (bitcoinMessage.verify(message, address, signature)) {
-					const newBlock = new Block(star)
+					const newBlock = new BlockClass.Block({ owner: address, star })
 					self._addBlock(newBlock)
 					resolve(newBlock)
 				}
 			}
+			reject(
+				'Error: Star submission time is greater than 5 mins. Please sign a new message and try again.'
+			)
 		})
 	}
 
@@ -174,7 +178,13 @@ class Blockchain {
 	getStarsByWalletAddress(address) {
 		let self = this
 		let stars = []
-		return new Promise((resolve, reject) => {})
+		return new Promise((resolve, reject) => {
+			self.chain.forEach(async (block) => {
+				let { owner, star } = await block.getBData()
+				if (owner == address) stars.push({ owner, star })
+			})
+			resolve(stars)
+		})
 	}
 
 	/**
@@ -186,7 +196,31 @@ class Blockchain {
 	validateChain() {
 		let self = this
 		let errorLog = []
-		return new Promise(async (resolve, reject) => {})
+		return new Promise(async (resolve, reject) => {
+			let previousBlockHash = ''
+
+			self.chain.forEach(async (block) => {
+				let isBlockValid = await block.validate()
+				if (!isBlockValid) {
+					errorLog.push(`Block #${block.height} has been tampered with!`)
+				}
+
+				// Check if chain has been broken
+				if (block.height == 0) {
+					previousBlockHash = block.hash
+				} else {
+					if (block.previousBlockHash !== previousBlockHash) {
+						errorLog.push(
+							`Block #${block.height - 1} hash does not equal block #${
+								block.height
+							} previousBlockHash!`
+						)
+					}
+					previousBlockHash = block.hash
+				}
+			})
+			resolve(errorLog)
+		})
 	}
 }
 
