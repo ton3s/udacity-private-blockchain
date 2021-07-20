@@ -73,7 +73,7 @@ class Block {
 			// Decoding the data to retrieve the JSON representation of the object
 			// Parse the data to an object to be retrieve.
 			try {
-				var decodedData = JSON.parse(Buffer.from(this.body, 'hex'))
+				var decodedData = JSON.parse(Buffer.from(self.body, 'hex'))
 			} catch (err) {
 				reject('Error parsing encoded data!')
 			}
